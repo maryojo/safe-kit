@@ -1,3 +1,4 @@
+import LogoutButton from "@/components/Logout"
 import { getServerSession } from "next-auth/next"
 import { redirect } from "next/navigation"
 
@@ -12,6 +13,7 @@ export default async function Dashboard() {
     <div>
       <h1>Dashboard</h1>
       <p>Welcome to your safe commute dashboard!</p>
+      <LogoutButton/>
     </div>
   )
 }
