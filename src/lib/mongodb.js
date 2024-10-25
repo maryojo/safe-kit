@@ -1,40 +1,69 @@
+// lib/mongodb.js
 import { MongoClient } from 'mongodb'
 
-const uri = process.env.MONGODB_URI
-const options = {
-  useUnifiedTopology: true,
-  useNewUrlParser: true,
-  ssl: true,
-  tls: true,
-  // tlsAllowInvalidCertificates: true,  // Only for development!
-  serverApi: { version: '1' }
+if (!process.env.MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable')
 }
 
-let client
-let clientPromise
+const MONGODB_URI = process.env.MONGODB_URI
 
-if (process.env.NODE_ENV === 'development') {
-  // In development, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options)
-    global._mongoClientPromise = client.connect()
+// Custom error types for better error handling
+export class DatabaseConnectionError extends Error {
+  constructor(message, originalError) {
+    super(message)
+    this.name = 'DatabaseConnectionError'
+    this.originalError = originalError
+    this.code = 'DB_CONNECTION_ERROR'
   }
-  clientPromise = global._mongoClientPromise
-} else {
-  client = new MongoClient(uri, options)
-  clientPromise = client.connect()
 }
+
+let cachedClient = null
+let cachedDb = null
 
 export async function connectToDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb }
+  }
+
   try {
-    const client = await clientPromise
+    const client = await MongoClient.connect(MONGODB_URI, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 30000, // Quick timeout for faster error feedback
+      socketTimeoutMS: 30000,
+    })
+
     const db = client.db()
-    await db.command({ ping: 1 }) // Test the connection
-    console.log("Successfully connected to MongoDB")
+
+    // Cache the connection
+    cachedClient = client
+    cachedDb = db
+
     return { client, db }
   } catch (error) {
     console.error('MongoDB connection error:', error)
-    throw error
+    
+    let userMessage = 'Unable to connect to the database'
+    if (error.name === 'MongoNetworkError') {
+      userMessage = 'Network error: Unable to reach the database server'
+    } else if (error.name === 'MongoServerSelectionError') {
+      userMessage = 'Server selection timeout: Database servers are unreachable'
+    } else if (error.code === 'ETIMEDOUT') {
+      userMessage = 'Connection timed out: Database is not responding'
+    }
+
+    throw new DatabaseConnectionError(userMessage, error)
+  }
+}
+
+export async function checkDatabaseConnection() {
+  try {
+    const { db } = await connectToDatabase()
+    await db.command({ ping: 1 })
+    return { isConnected: true }
+  } catch (error) {
+    return { 
+      isConnected: false, 
+      error: error instanceof DatabaseConnectionError ? error.message : 'Database connection failed'
+    }
   }
 }

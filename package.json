@@ -1,5 +1,5 @@
 {
-  "name": "keepher",
+  "name": "safe-kit",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,13 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tensorflow-models/toxicity": "^1.2.2",
+    "@tensorflow-models/universal-sentence-encoder": "^1.2.2",
+    "@tensorflow/tfjs": "^4.22.0",
     "bcryptjs": "^2.4.3",
     "mongodb": "^6.9.0",
     "next": "14.0.4",
     "next-auth": "^4.24.8",
     "next-pwa": "^5.6.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "twitter-api-v2": "^1.18.0"
   },
   "devDependencies": {
     "@types/next-pwa": "^5.6.9",
